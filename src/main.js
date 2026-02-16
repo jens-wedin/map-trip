@@ -442,5 +442,43 @@ if (themeIcon) {
   themeIcon.textContent = currentTheme === "dark" ? "☀️" : "🌙";
 }
 
+// Mobile sidebar toggle
+function toggleSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  const backdrop = document.getElementById("backdrop");
+  const isOpen = sidebar.classList.contains("open");
+
+  if (isOpen) {
+    sidebar.classList.remove("open");
+    backdrop.classList.remove("active");
+    document.body.style.overflow = "";
+  } else {
+    sidebar.classList.add("open");
+    backdrop.classList.add("active");
+    document.body.style.overflow = "hidden";
+  }
+}
+
+document.getElementById("menu-toggle").addEventListener("click", toggleSidebar);
+document.getElementById("backdrop").addEventListener("click", toggleSidebar);
+
+// Close sidebar after calculating route on mobile
+const originalCalculateRoute = calculateRoute;
+async function calculateRouteWithSidebarClose() {
+  await originalCalculateRoute();
+  if (window.innerWidth <= 768) {
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar.classList.contains("open")) {
+      toggleSidebar();
+    }
+  }
+}
+document
+  .getElementById("calculate-btn")
+  .removeEventListener("click", calculateRoute);
+document
+  .getElementById("calculate-btn")
+  .addEventListener("click", calculateRouteWithSidebarClose);
+
 // Initialize
 initMap();
