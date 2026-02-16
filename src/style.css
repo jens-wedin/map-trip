@@ -1,0 +1,265 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+#sidebar {
+  width: 380px;
+  min-width: 380px;
+  padding: 24px;
+  overflow-y: auto;
+  background: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+h1 {
+  font-size: 1.5rem;
+  color: #212529;
+}
+
+.subtitle {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-top: -8px;
+}
+
+#map {
+  flex: 1;
+  height: 100vh;
+}
+
+.stop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.stop-item.origin, .stop-item.destination {
+  border-color: #0d6efd;
+  background: #e7f1ff;
+}
+
+.stop-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #0d6efd;
+  color: white;
+  font-weight: 700;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.stop-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.9rem;
+  color: #212529;
+  outline: none;
+}
+
+.stop-input[readonly] {
+  cursor: default;
+}
+
+.stop-remove {
+  background: none;
+  border: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 1.2rem;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.stop-remove:hover {
+  color: #a71d2a;
+}
+
+.connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 0;
+  color: #adb5bd;
+}
+
+.connector::before {
+  content: '│';
+  margin-left: 20px;
+}
+
+#stops-container {
+  display: flex;
+  flex-direction: column;
+}
+
+#intermediate-stops {
+  display: flex;
+  flex-direction: column;
+}
+
+.add-stop-section {
+  display: flex;
+  gap: 8px;
+}
+
+#new-stop-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 0.9rem;
+}
+
+#new-stop-input:focus {
+  outline: none;
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.15);
+}
+
+#add-stop-btn {
+  padding: 8px 14px;
+  background: #198754;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+#add-stop-btn:hover {
+  background: #157347;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #495057;
+  cursor: pointer;
+}
+
+#calculate-btn {
+  padding: 12px;
+  background: #0d6efd;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+#calculate-btn:hover {
+  background: #0b5ed7;
+}
+
+#calculate-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#route-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#route-info h2 {
+  font-size: 1.1rem;
+  color: #212529;
+}
+
+.segment {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.segment-label {
+  font-weight: 600;
+  color: #212529;
+  flex: 1;
+}
+
+.segment-distance, .segment-time {
+  color: #495057;
+  margin-left: 12px;
+  white-space: nowrap;
+}
+
+.segment-time {
+  color: #0d6efd;
+  font-weight: 600;
+  min-width: 70px;
+  text-align: right;
+}
+
+.route-total {
+  padding: 14px;
+  background: #0d6efd;
+  color: white;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+}
+
+.return-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #6c757d;
+  margin-top: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.loading {
+  opacity: 0.6;
+  pointer-events: none;
+}

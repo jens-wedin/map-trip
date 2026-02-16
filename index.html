@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roadtrip Planner</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="sidebar">
+      <h1>🗺️ Roadtrip Planner</h1>
+      <p class="subtitle">Stockholm → Paris &amp; back</p>
+
+      <div id="stops-container">
+        <div class="stop-item origin" data-index="0">
+          <span class="stop-label">A</span>
+          <input type="text" value="Stockholm, Sweden" readonly class="stop-input" />
+        </div>
+        <div id="intermediate-stops"></div>
+        <div class="stop-item destination" data-index="last">
+          <span class="stop-label">B</span>
+          <input type="text" value="Paris, France" readonly class="stop-input" />
+        </div>
+      </div>
+
+      <div class="add-stop-section">
+        <input type="text" id="new-stop-input" placeholder="Add a stop (e.g. Hamburg, Copenhagen...)" />
+        <button id="add-stop-btn">+ Add Stop</button>
+      </div>
+
+      <div class="options">
+        <label>
+          <input type="checkbox" id="return-trip" checked />
+          Include return trip (Paris → Stockholm)
+        </label>
+      </div>
+
+      <button id="calculate-btn">Calculate Route</button>
+
+      <div id="route-info" class="hidden">
+        <h2>Route Summary</h2>
+        <div id="route-segments"></div>
+        <div id="route-total" class="route-total"></div>
+      </div>
+    </div>
+    <div id="map"></div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
