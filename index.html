@@ -9,30 +9,21 @@
     <body>
         <div id="app">
             <div id="sidebar">
-                <h1>🗺️ Roadtrip Planner</h1>
-                <p class="subtitle">Stockholm → Paris &amp; back</p>
-
-                <div id="stops-container">
-                    <div class="stop-item origin" data-index="0">
-                        <span class="stop-label">A</span>
-                        <input
-                            type="text"
-                            value="Stockholm, Sweden"
-                            readonly
-                            class="stop-input"
-                        />
+                <div class="header">
+                    <div>
+                        <h1>Roadtrip Planner</h1>
+                        <p class="subtitle" id="subtitle"></p>
                     </div>
-                    <div id="intermediate-stops"></div>
-                    <div class="stop-item destination" data-index="last">
-                        <span class="stop-label">B</span>
-                        <input
-                            type="text"
-                            value="Paris, France"
-                            readonly
-                            class="stop-input"
-                        />
-                    </div>
+                    <button
+                        id="theme-toggle"
+                        class="theme-toggle"
+                        title="Toggle theme"
+                    >
+                        <span class="theme-icon">🌙</span>
+                    </button>
                 </div>
+
+                <div id="stops-container"></div>
 
                 <div class="add-stop-section">
                     <input
@@ -46,7 +37,7 @@
                 <div class="options">
                     <label>
                         <input type="checkbox" id="return-trip" checked />
-                        Include return trip (Paris → Stockholm)
+                        Include return trip
                     </label>
                 </div>
 

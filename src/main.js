@@ -1,37 +1,66 @@
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 // Fix Leaflet default marker icons
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconRetinaUrl:
+    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
 
-const STOCKHOLM = { name: 'Stockholm, Sweden', lat: 59.3293, lng: 18.0686 };
-const PARIS = { name: 'Paris, France', lat: 48.8566, lng: 2.3522 };
+let stops = [
+  { name: "Stockholm, Sweden", lat: 59.3293, lng: 18.0686 },
+  { name: "Paris, France", lat: 48.8566, lng: 2.3522 },
+];
 
-let intermediateStops = [];
 let map;
 let routeLayers = [];
 let markerLayers = [];
+let dragSrcIndex = null;
+let tileLayer = null;
+let currentTheme = localStorage.getItem("theme") || "light";
 
 function initMap() {
-  map = L.map('map').setView([54.0, 10.0], 5);
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 18,
-  }).addTo(map);
+  map = L.map("map").setView([54.0, 10.0], 5);
+  updateMapTiles();
 
-  addMarker(STOCKHOLM, 'A – Stockholm (Start)');
-  addMarker(PARIS, 'B – Paris (Destination)');
-  map.fitBounds([[STOCKHOLM.lat, STOCKHOLM.lng], [PARIS.lat, PARIS.lng]], { padding: [50, 50] });
+  renderStops();
+  updateMapMarkers();
 }
 
-function createNumberedIcon(label, color = '#0d6efd') {
+function updateMapTiles() {
+  if (tileLayer) {
+    map.removeLayer(tileLayer);
+  }
+
+  if (currentTheme === "dark") {
+    tileLayer = L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        maxZoom: 19,
+      },
+    );
+  } else {
+    tileLayer = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 18,
+      },
+    );
+  }
+
+  tileLayer.addTo(map);
+}
+
+function createNumberedIcon(label, color = "#0d6efd") {
   return L.divIcon({
-    className: 'custom-marker',
+    className: "custom-marker",
     html: `<div style="
       background: ${color};
       color: white;
@@ -52,10 +81,10 @@ function createNumberedIcon(label, color = '#0d6efd') {
   });
 }
 
-function addMarker(stop, popupText) {
-  const label = popupText.charAt(0);
-  const color = (label === 'A' || label === 'B') ? '#0d6efd' : '#198754';
-  const marker = L.marker([stop.lat, stop.lng], { icon: createNumberedIcon(label, color) })
+function addMarker(stop, popupText, label, color) {
+  const marker = L.marker([stop.lat, stop.lng], {
+    icon: createNumberedIcon(label, color),
+  })
     .addTo(map)
     .bindPopup(popupText);
   markerLayers.push(marker);
@@ -63,105 +92,162 @@ function addMarker(stop, popupText) {
 }
 
 function clearMapOverlays() {
-  routeLayers.forEach(l => map.removeLayer(l));
-  markerLayers.forEach(l => map.removeLayer(l));
+  routeLayers.forEach((l) => map.removeLayer(l));
+  markerLayers.forEach((l) => map.removeLayer(l));
   routeLayers = [];
   markerLayers = [];
 }
 
-function getStopLabel(index, total) {
+function getStopLabel(index) {
   return String.fromCharCode(65 + index);
 }
 
+function updateSubtitle() {
+  const el = document.getElementById("subtitle");
+  if (stops.length >= 2) {
+    el.textContent = `${stops[0].name} \u2192 ${stops[stops.length - 1].name}`;
+  } else if (stops.length === 1) {
+    el.textContent = stops[0].name;
+  } else {
+    el.textContent = "Add stops to plan your trip";
+  }
+}
+
 function renderStops() {
-  const container = document.getElementById('intermediate-stops');
-  container.innerHTML = '';
+  const container = document.getElementById("stops-container");
+  container.innerHTML = "";
 
-  intermediateStops.forEach((stop, i) => {
-    const label = getStopLabel(i + 1, intermediateStops.length + 2);
+  stops.forEach((stop, i) => {
+    const label = getStopLabel(i);
+    const isEndpoint = i === 0 || i === stops.length - 1;
 
-    const connector = document.createElement('div');
-    connector.className = 'connector';
-    container.appendChild(connector);
+    if (i > 0) {
+      const connector = document.createElement("div");
+      connector.className = "connector";
+      container.appendChild(connector);
+    }
 
-    const div = document.createElement('div');
-    div.className = 'stop-item';
+    const div = document.createElement("div");
+    div.className = "stop-item" + (isEndpoint ? " endpoint" : "");
+    div.draggable = true;
     div.dataset.index = i;
+
     div.innerHTML = `
-      <span class="stop-label" style="background: #198754">${label}</span>
+      <span class="drag-handle" title="Drag to reorder">&#x2630;</span>
+      <span class="stop-label" style="background: ${isEndpoint ? "#0d6efd" : "#198754"}">${label}</span>
       <input type="text" value="${stop.name}" readonly class="stop-input" />
       <button class="stop-remove" data-index="${i}" title="Remove stop">&times;</button>
     `;
+
+    // Drag events
+    div.addEventListener("dragstart", handleDragStart);
+    div.addEventListener("dragover", handleDragOver);
+    div.addEventListener("dragenter", handleDragEnter);
+    div.addEventListener("dragleave", handleDragLeave);
+    div.addEventListener("drop", handleDrop);
+    div.addEventListener("dragend", handleDragEnd);
+
     container.appendChild(div);
   });
 
-  // Update the destination label
-  const destLabel = document.querySelector('.stop-item.destination .stop-label');
-  if (destLabel) {
-    destLabel.textContent = getStopLabel(intermediateStops.length + 1, intermediateStops.length + 2);
-  }
-
   // Rebind remove buttons
-  container.querySelectorAll('.stop-remove').forEach(btn => {
-    btn.addEventListener('click', () => {
+  container.querySelectorAll(".stop-remove").forEach((btn) => {
+    btn.addEventListener("click", () => {
       const idx = parseInt(btn.dataset.index);
-      intermediateStops.splice(idx, 1);
+      stops.splice(idx, 1);
       renderStops();
       updateMapMarkers();
     });
   });
+
+  updateSubtitle();
+}
+
+// Drag and drop handlers
+function handleDragStart(e) {
+  dragSrcIndex = parseInt(this.dataset.index);
+  this.classList.add("dragging");
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", dragSrcIndex);
+}
+
+function handleDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+}
+
+function handleDragEnter(e) {
+  e.preventDefault();
+  const item = e.currentTarget;
+  if (parseInt(item.dataset.index) !== dragSrcIndex) {
+    item.classList.add("drag-over");
+  }
+}
+
+function handleDragLeave(e) {
+  e.currentTarget.classList.remove("drag-over");
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove("drag-over");
+  const targetIndex = parseInt(e.currentTarget.dataset.index);
+  if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
+
+  const [moved] = stops.splice(dragSrcIndex, 1);
+  stops.splice(targetIndex, 0, moved);
+
+  renderStops();
+  updateMapMarkers();
+}
+
+function handleDragEnd() {
+  this.classList.remove("dragging");
+  document.querySelectorAll(".stop-item").forEach((item) => {
+    item.classList.remove("drag-over");
+  });
+  dragSrcIndex = null;
 }
 
 function updateMapMarkers() {
   clearMapOverlays();
-  const allStops = getAllStops();
-  allStops.forEach((stop, i) => {
-    const label = getStopLabel(i, allStops.length);
-    const color = (i === 0 || i === allStops.length - 1) ? '#0d6efd' : '#198754';
-    addMarker(stop, `${label} – ${stop.name}`);
+  stops.forEach((stop, i) => {
+    const label = getStopLabel(i);
+    const isEndpoint = i === 0 || i === stops.length - 1;
+    const color = isEndpoint ? "#0d6efd" : "#198754";
+    addMarker(stop, `${label} \u2013 ${stop.name}`, label, color);
   });
 
-  if (allStops.length > 1) {
-    const bounds = allStops.map(s => [s.lat, s.lng]);
+  if (stops.length > 1) {
+    const bounds = stops.map((s) => [s.lat, s.lng]);
     map.fitBounds(bounds, { padding: [50, 50] });
+  } else if (stops.length === 1) {
+    map.setView([stops[0].lat, stops[0].lng], 8);
   }
 
-  // Hide route info when stops change
-  document.getElementById('route-info').classList.add('hidden');
-}
-
-function getAllStops() {
-  return [STOCKHOLM, ...intermediateStops, PARIS];
+  document.getElementById("route-info").classList.add("hidden");
 }
 
 async function geocode(query) {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=1`;
   const res = await fetch(url, {
-    headers: { 'User-Agent': 'RoadtripPlanner/1.0' }
+    headers: { "User-Agent": "RoadtripPlanner/1.0" },
   });
   const data = await res.json();
   if (data.length === 0) throw new Error(`Location not found: ${query}`);
   return {
-    name: data[0].display_name.split(',').slice(0, 2).join(',').trim(),
+    name: data[0].display_name.split(",").slice(0, 2).join(",").trim(),
     lat: parseFloat(data[0].lat),
     lng: parseFloat(data[0].lon),
   };
-}
-
-async function getRoute(waypoints) {
-  const coords = waypoints.map(w => `${w.lng},${w.lat}`).join(';');
-  const url = `https://router.project-osrm.org/route/v1/driving/${coords}?overview=full&geometries=geojson&steps=false`;
-  const res = await fetch(url);
-  const data = await res.json();
-  if (data.code !== 'Ok') throw new Error('Routing failed');
-  return data.routes[0];
 }
 
 async function getSegmentRoute(from, to) {
   const url = `https://router.project-osrm.org/route/v1/driving/${from.lng},${from.lat};${to.lng},${to.lat}?overview=full&geometries=geojson&steps=false`;
   const res = await fetch(url);
   const data = await res.json();
-  if (data.code !== 'Ok') throw new Error(`Routing failed: ${from.name} → ${to.name}`);
+  if (data.code !== "Ok")
+    throw new Error(`Routing failed: ${from.name} \u2192 ${to.name}`);
   return data.routes[0];
 }
 
@@ -177,8 +263,8 @@ function formatDuration(seconds) {
   return `${hours}h ${minutes}m`;
 }
 
-function displayRoute(geometry, color = '#0d6efd', weight = 5) {
-  const coords = geometry.coordinates.map(c => [c[1], c[0]]);
+function displayRoute(geometry, color = "#0d6efd", weight = 5) {
+  const coords = geometry.coordinates.map((c) => [c[1], c[0]]);
   const polyline = L.polyline(coords, {
     color,
     weight,
@@ -189,45 +275,42 @@ function displayRoute(geometry, color = '#0d6efd', weight = 5) {
 }
 
 async function calculateRoute() {
-  const btn = document.getElementById('calculate-btn');
-  const routeInfo = document.getElementById('route-info');
-  const segmentsDiv = document.getElementById('route-segments');
-  const totalDiv = document.getElementById('route-total');
-  const includeReturn = document.getElementById('return-trip').checked;
+  if (stops.length < 2) {
+    alert("Add at least 2 stops to calculate a route.");
+    return;
+  }
+
+  const btn = document.getElementById("calculate-btn");
+  const routeInfo = document.getElementById("route-info");
+  const segmentsDiv = document.getElementById("route-segments");
+  const totalDiv = document.getElementById("route-total");
+  const includeReturn = document.getElementById("return-trip").checked;
 
   btn.disabled = true;
-  btn.textContent = 'Calculating...';
-  routeInfo.classList.add('hidden');
+  btn.textContent = "Calculating...";
+  routeInfo.classList.add("hidden");
 
   try {
     clearMapOverlays();
 
-    const forwardStops = getAllStops();
-    const allStopsWithReturn = includeReturn
-      ? [...forwardStops, ...forwardStops.slice(0, -1).reverse()]
-      : forwardStops;
-
-    // Add markers for forward trip
-    forwardStops.forEach((stop, i) => {
-      const label = getStopLabel(i, forwardStops.length);
-      const color = (i === 0 || i === forwardStops.length - 1) ? '#0d6efd' : '#198754';
-      addMarker(stop, `${label} – ${stop.name}`);
+    // Add markers
+    stops.forEach((stop, i) => {
+      const label = getStopLabel(i);
+      const isEndpoint = i === 0 || i === stops.length - 1;
+      const color = isEndpoint ? "#0d6efd" : "#198754";
+      addMarker(stop, `${label} \u2013 ${stop.name}`, label, color);
     });
 
-    // Calculate each segment
     let segments = [];
     let totalDistance = 0;
     let totalDuration = 0;
 
     // Forward segments
-    for (let i = 0; i < forwardStops.length - 1; i++) {
-      const route = await getSegmentRoute(forwardStops[i], forwardStops[i + 1]);
-      const fromLabel = getStopLabel(i, forwardStops.length);
-      const toLabel = getStopLabel(i + 1, forwardStops.length);
+    for (let i = 0; i < stops.length - 1; i++) {
+      const route = await getSegmentRoute(stops[i], stops[i + 1]);
       segments.push({
-        label: `${fromLabel} → ${toLabel}`,
-        from: forwardStops[i].name,
-        to: forwardStops[i + 1].name,
+        from: stops[i].name,
+        to: stops[i + 1].name,
         distance: route.distance,
         duration: route.duration,
         geometry: route.geometry,
@@ -235,16 +318,15 @@ async function calculateRoute() {
       });
       totalDistance += route.distance;
       totalDuration += route.duration;
-      displayRoute(route.geometry, '#0d6efd');
+      displayRoute(route.geometry, "#0d6efd");
     }
 
     // Return segments
     if (includeReturn) {
-      const returnStops = [...forwardStops].reverse();
+      const returnStops = [...stops].reverse();
       for (let i = 0; i < returnStops.length - 1; i++) {
         const route = await getSegmentRoute(returnStops[i], returnStops[i + 1]);
         segments.push({
-          label: `Return`,
           from: returnStops[i].name,
           to: returnStops[i + 1].name,
           distance: route.distance,
@@ -254,36 +336,31 @@ async function calculateRoute() {
         });
         totalDistance += route.distance;
         totalDuration += route.duration;
-        displayRoute(route.geometry, '#dc3545', 4);
+        displayRoute(route.geometry, "#dc3545", 4);
       }
     }
 
     // Render segments
-    segmentsDiv.innerHTML = '';
+    segmentsDiv.innerHTML = "";
 
-    // Forward segments
-    const forwardSegments = segments.filter(s => !s.isReturn);
-    forwardSegments.forEach(seg => {
+    const forwardSegments = segments.filter((s) => !s.isReturn);
+    forwardSegments.forEach((seg) => {
       segmentsDiv.innerHTML += `
         <div class="segment">
-          <span class="segment-label">${seg.from} → ${seg.to}</span>
+          <span class="segment-label">${seg.from} \u2192 ${seg.to}</span>
           <span class="segment-distance">${formatDistance(seg.distance)}</span>
           <span class="segment-time">${formatDuration(seg.duration)}</span>
         </div>
       `;
     });
 
-    // Return segments
     if (includeReturn) {
-      const returnSegments = segments.filter(s => s.isReturn);
-      const returnDistance = returnSegments.reduce((a, s) => a + s.distance, 0);
-      const returnDuration = returnSegments.reduce((a, s) => a + s.duration, 0);
-
+      const returnSegments = segments.filter((s) => s.isReturn);
       segmentsDiv.innerHTML += `<span class="return-label">Return trip</span>`;
-      returnSegments.forEach(seg => {
+      returnSegments.forEach((seg) => {
         segmentsDiv.innerHTML += `
           <div class="segment">
-            <span class="segment-label">${seg.from} → ${seg.to}</span>
+            <span class="segment-label">${seg.from} \u2192 ${seg.to}</span>
             <span class="segment-distance">${formatDistance(seg.distance)}</span>
             <span class="segment-time">${formatDuration(seg.duration)}</span>
           </div>
@@ -296,51 +373,74 @@ async function calculateRoute() {
       <span>${formatDuration(totalDuration)}</span>
     `;
 
-    routeInfo.classList.remove('hidden');
+    routeInfo.classList.remove("hidden");
 
-    // Fit map to show all routes
-    const allCoords = forwardStops.map(s => [s.lat, s.lng]);
+    const allCoords = stops.map((s) => [s.lat, s.lng]);
     map.fitBounds(allCoords, { padding: [50, 50] });
-
   } catch (err) {
     alert(`Error: ${err.message}`);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Calculate Route';
+    btn.textContent = "Calculate Route";
   }
 }
 
 // Event listeners
-document.getElementById('add-stop-btn').addEventListener('click', async () => {
-  const input = document.getElementById('new-stop-input');
+document.getElementById("add-stop-btn").addEventListener("click", async () => {
+  const input = document.getElementById("new-stop-input");
   const query = input.value.trim();
   if (!query) return;
 
-  const btn = document.getElementById('add-stop-btn');
+  const btn = document.getElementById("add-stop-btn");
   btn.disabled = true;
-  btn.textContent = 'Finding...';
+  btn.textContent = "Finding...";
 
   try {
     const stop = await geocode(query);
-    intermediateStops.push(stop);
-    input.value = '';
+    stops.push(stop);
+    input.value = "";
     renderStops();
     updateMapMarkers();
   } catch (err) {
     alert(err.message);
   } finally {
     btn.disabled = false;
-    btn.textContent = '+ Add Stop';
+    btn.textContent = "+ Add Stop";
   }
 });
 
-document.getElementById('new-stop-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    document.getElementById('add-stop-btn').click();
+document.getElementById("new-stop-input").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    document.getElementById("add-stop-btn").click();
   }
 });
 
-document.getElementById('calculate-btn').addEventListener('click', calculateRoute);
+document
+  .getElementById("calculate-btn")
+  .addEventListener("click", calculateRoute);
+
+// Theme toggle
+function toggleTheme() {
+  currentTheme = currentTheme === "light" ? "dark" : "light";
+  document.documentElement.setAttribute("data-theme", currentTheme);
+  localStorage.setItem("theme", currentTheme);
+
+  const icon = document.querySelector(".theme-icon");
+  icon.textContent = currentTheme === "dark" ? "☀️" : "🌙";
+
+  if (map) {
+    updateMapTiles();
+  }
+}
+
+document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
+
+// Initialize theme
+document.documentElement.setAttribute("data-theme", currentTheme);
+const themeIcon = document.querySelector(".theme-icon");
+if (themeIcon) {
+  themeIcon.textContent = currentTheme === "dark" ? "☀️" : "🌙";
+}
 
 // Initialize
 initMap();
