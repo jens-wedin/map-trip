@@ -272,6 +272,111 @@ h1 {
     cursor: pointer;
 }
 
+/* Vehicle settings */
+.vehicle-settings {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.vehicle-settings-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+    margin-bottom: 2px;
+}
+
+.vehicle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.vehicle-row label {
+    font-size: 0.9rem;
+    color: var(--text-tertiary);
+    flex-shrink: 0;
+}
+
+#car-type {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color-light);
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+#car-type:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.price-input-group {
+    display: flex;
+    align-items: center;
+    min-width: 120px;
+}
+
+#price-per-km {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid var(--border-color-light);
+    border-right: none;
+    border-radius: 6px 0 0 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.85rem;
+}
+
+#price-per-km:focus {
+    outline: none;
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.price-currency {
+    padding: 6px 10px;
+    border: 1px solid var(--border-color-light);
+    border-radius: 0 6px 6px 0;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Route cost */
+.route-cost {
+    padding: 12px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.cost-label {
+    font-size: 0.85rem;
+    color: var(--text-tertiary);
+}
+
+.cost-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent-success);
+}
+
 #calculate-btn {
     padding: 12px;
     background: var(--accent-primary);

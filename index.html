@@ -45,12 +45,38 @@
                     </label>
                 </div>
 
+                <div class="vehicle-settings">
+                    <h3 class="vehicle-settings-title">Vehicle Settings</h3>
+                    <div class="vehicle-row">
+                        <label for="car-type">Car type</label>
+                        <select id="car-type">
+                            <option value="gasoline">Gasoline</option>
+                            <option value="diesel">Diesel</option>
+                            <option value="electric">Electric</option>
+                        </select>
+                    </div>
+                    <div class="vehicle-row">
+                        <label for="price-per-km">Price per km</label>
+                        <div class="price-input-group">
+                            <input
+                                type="number"
+                                id="price-per-km"
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                            />
+                            <span class="price-currency">$</span>
+                        </div>
+                    </div>
+                </div>
+
                 <button id="calculate-btn">Calculate Route</button>
 
                 <div id="route-info" class="hidden">
                     <h2>Route Summary</h2>
                     <div id="route-segments"></div>
                     <div id="route-total" class="route-total"></div>
+                    <div id="route-cost" class="route-cost hidden"></div>
                 </div>
             </div>
             <div id="map"></div>

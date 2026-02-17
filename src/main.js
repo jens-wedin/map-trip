@@ -284,7 +284,10 @@ async function calculateRoute() {
   const routeInfo = document.getElementById("route-info");
   const segmentsDiv = document.getElementById("route-segments");
   const totalDiv = document.getElementById("route-total");
+  const costDiv = document.getElementById("route-cost");
   const includeReturn = document.getElementById("return-trip").checked;
+  const carType = document.getElementById("car-type").value;
+  const pricePerKm = parseFloat(document.getElementById("price-per-km").value);
 
   btn.disabled = true;
   btn.textContent = "Calculating...";
@@ -372,6 +375,20 @@ async function calculateRoute() {
       <span>Total: ${formatDistance(totalDistance)}</span>
       <span>${formatDuration(totalDuration)}</span>
     `;
+
+    // Display estimated cost if a price per km was entered
+    if (!isNaN(pricePerKm) && pricePerKm > 0) {
+      const totalKm = totalDistance / 1000;
+      const totalCost = totalKm * pricePerKm;
+      const carTypeLabel = carType.charAt(0).toUpperCase() + carType.slice(1);
+      costDiv.innerHTML = `
+        <span class="cost-label">${carTypeLabel} &mdash; Est. cost</span>
+        <span class="cost-value">$${totalCost.toFixed(2)}</span>
+      `;
+      costDiv.classList.remove("hidden");
+    } else {
+      costDiv.classList.add("hidden");
+    }
 
     routeInfo.classList.remove("hidden");
 
