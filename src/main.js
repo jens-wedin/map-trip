@@ -266,6 +266,55 @@ function formatDuration(seconds) {
   return `${hours}h ${minutes}m`;
 }
 
+function sampleRoutePoints(geometry, intervalKm = 50) {
+  const coords = geometry.coordinates; // [lng, lat] pairs
+  const points = [];
+  let accumulated = 0;
+
+  points.push({ lat: coords[0][1], lng: coords[0][0] });
+
+  for (let i = 1; i < coords.length; i++) {
+    const prevLat = coords[i - 1][1];
+    const prevLng = coords[i - 1][0];
+    const currLat = coords[i][1];
+    const currLng = coords[i][0];
+
+    const segmentKm = haversineKm(prevLat, prevLng, currLat, currLng);
+    accumulated += segmentKm;
+
+    if (accumulated >= intervalKm) {
+      points.push({ lat: currLat, lng: currLng });
+      accumulated = 0;
+    }
+  }
+
+  // Always include the last point
+  const last = coords[coords.length - 1];
+  const lastPoint = { lat: last[1], lng: last[0] };
+  const alreadyIncluded = points.some(
+    (p) => p.lat === lastPoint.lat && p.lng === lastPoint.lng
+  );
+  if (!alreadyIncluded) {
+    points.push(lastPoint);
+  }
+
+  return points;
+}
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 function displayRoute(geometry, color = "#0d6efd", weight = 5) {
   const coords = geometry.coordinates.map((c) => [c[1], c[0]]);
   const polyline = L.polyline(coords, {
