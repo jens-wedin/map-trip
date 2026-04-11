@@ -608,6 +608,25 @@ document
   .getElementById("calculate-btn")
   .addEventListener("click", calculateRoute);
 
+// Toggle Tesla chargers when car type changes
+document.getElementById("car-type").addEventListener("change", async (e) => {
+  const chargerStatus = document.getElementById("charger-status");
+  if (e.target.value === "electric" && lastRouteGeometry) {
+    chargerStatus.textContent = "Loading Tesla chargers...";
+    chargerStatus.classList.remove("hidden");
+    try {
+      const chargers = await fetchChargersAlongRoute(lastRouteGeometry);
+      displayChargers(chargers);
+      chargerStatus.textContent = `${chargers.length} Tesla Supercharger${chargers.length !== 1 ? "s" : ""} found along route`;
+    } catch {
+      chargerStatus.textContent = "Could not load chargers";
+    }
+  } else {
+    clearChargers();
+    chargerStatus.classList.add("hidden");
+  }
+});
+
 // Theme toggle
 function toggleTheme() {
   currentTheme = currentTheme === "light" ? "dark" : "light";
