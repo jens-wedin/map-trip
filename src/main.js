@@ -445,6 +445,7 @@ async function calculateRoute() {
 
   try {
     clearMapOverlays();
+    clearChargers();
 
     // Add markers
     stops.forEach((stop, i) => {
@@ -541,6 +542,27 @@ async function calculateRoute() {
     }
 
     routeInfo.classList.remove("hidden");
+
+    // Store combined route geometry for charger lookup
+    const allGeometryCoords = segments.flatMap((s) => s.geometry.coordinates);
+    lastRouteGeometry = { type: "LineString", coordinates: allGeometryCoords };
+
+    // Fetch Tesla chargers if electric car type selected
+    if (carType === "electric") {
+      const chargerStatus = document.getElementById("charger-status");
+      chargerStatus.textContent = "Loading Tesla chargers...";
+      chargerStatus.classList.remove("hidden");
+      try {
+        const chargers = await fetchChargersAlongRoute(lastRouteGeometry);
+        displayChargers(chargers);
+        chargerStatus.textContent = `${chargers.length} Tesla Supercharger${chargers.length !== 1 ? "s" : ""} found along route`;
+      } catch {
+        chargerStatus.textContent = "Could not load chargers";
+      }
+    } else {
+      clearChargers();
+      document.getElementById("charger-status").classList.add("hidden");
+    }
 
     const allCoords = stops.map((s) => [s.lat, s.lng]);
     map.fitBounds(allCoords, { padding: [50, 50] });
