@@ -20,11 +20,14 @@ let routeLayers = [];
 let markerLayers = [];
 let dragSrcIndex = null;
 let tileLayer = null;
+let chargersLayerGroup = null;
+let lastRouteGeometry = null;
 let currentTheme = localStorage.getItem("theme") || "light";
 
 function initMap() {
   map = L.map("map").setView([54.0, 10.0], 5);
   updateMapTiles();
+  chargersLayerGroup = L.layerGroup().addTo(map);
 
   renderStops();
   updateMapMarkers();
