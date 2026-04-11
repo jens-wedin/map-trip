@@ -214,6 +214,10 @@ function handleDragEnd() {
 
 function updateMapMarkers() {
   clearMapOverlays();
+  clearChargers();
+  lastRouteGeometry = null;
+  const chargerStatus = document.getElementById("charger-status");
+  if (chargerStatus) chargerStatus.classList.add("hidden");
   stops.forEach((stop, i) => {
     const label = getStopLabel(i);
     const isEndpoint = i === 0 || i === stops.length - 1;

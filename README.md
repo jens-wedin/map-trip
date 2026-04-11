@@ -9,6 +9,12 @@ An interactive roadtrip planner built with Leaflet and Vite. Plan routes between
 - Add custom intermediate stops
 - Toggle return trip
 - Route distance calculation
+- Vehicle settings with car type selection (Gasoline, Diesel, Electric)
+- Price per km cost estimation
+- Tesla Supercharger locations displayed along route (when Electric is selected)
+- Dark/light theme toggle
+- Drag-and-drop stop reordering
+- Mobile responsive design
 
 ## Getting Started
 
@@ -50,3 +56,6 @@ The project auto-deploys to GitHub Pages on push to `main` via GitHub Actions.
 
 - [Leaflet](https://leafletjs.com/) - interactive maps
 - [Vite](https://vite.dev/) - build tool and dev server
+- [Open Charge Map](https://openchargemap.org/) - EV charging station data
+- [OSRM](http://project-osrm.org/) - route calculation
+- [Nominatim](https://nominatim.openstreetmap.org/) - geocoding
