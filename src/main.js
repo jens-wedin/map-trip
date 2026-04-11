@@ -315,6 +315,58 @@ function haversineKm(lat1, lng1, lat2, lng2) {
   return R * c;
 }
 
+async function fetchTeslaChargers(lat, lng, radiusKm = 5) {
+  const url = `https://api.openchargemap.io/v3/poi?output=json&latitude=${lat}&longitude=${lng}&distance=${radiusKm}&distanceunit=KM&operatorid=23&maxresults=50&compact=true`;
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "RoadtripPlanner/1.0" },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((poi) => ({
+      id: poi.ID,
+      name: poi.AddressInfo?.Title || "Tesla Supercharger",
+      address: [
+        poi.AddressInfo?.AddressLine1,
+        poi.AddressInfo?.Town,
+        poi.AddressInfo?.Country?.Title,
+      ]
+        .filter(Boolean)
+        .join(", "),
+      lat: poi.AddressInfo?.Latitude,
+      lng: poi.AddressInfo?.Longitude,
+      numberOfPoints: poi.NumberOfPoints || "N/A",
+      connectorTypes: (poi.Connections || [])
+        .map((c) => c.ConnectionType?.Title)
+        .filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .join(", ") || "Unknown",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchChargersAlongRoute(geometry) {
+  const points = sampleRoutePoints(geometry, 50);
+  const allChargers = await Promise.all(
+    points.map((p) => fetchTeslaChargers(p.lat, p.lng, 5))
+  );
+
+  // Deduplicate by charger ID
+  const seen = new Set();
+  const unique = [];
+  for (const chargers of allChargers) {
+    for (const charger of chargers) {
+      if (!seen.has(charger.id)) {
+        seen.add(charger.id);
+        unique.push(charger);
+      }
+    }
+  }
+  return unique;
+}
+
 function displayRoute(geometry, color = "#0d6efd", weight = 5) {
   const coords = geometry.coordinates.map((c) => [c[1], c[0]]);
   const polyline = L.polyline(coords, {
