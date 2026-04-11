@@ -367,6 +367,52 @@ async function fetchChargersAlongRoute(geometry) {
   return unique;
 }
 
+function createChargerIcon() {
+  return L.divIcon({
+    className: "charger-marker",
+    html: `<div style="
+      background: #e82127;
+      color: white;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    ">&#9889;</div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+    popupAnchor: [0, -16],
+  });
+}
+
+function displayChargers(chargers) {
+  clearChargers();
+  chargers.forEach((charger) => {
+    if (!charger.lat || !charger.lng) return;
+    const marker = L.marker([charger.lat, charger.lng], {
+      icon: createChargerIcon(),
+    }).bindPopup(`
+      <div class="charger-popup">
+        <strong>${charger.name}</strong>
+        <span>${charger.address}</span>
+        <span>Charging points: ${charger.numberOfPoints}</span>
+        <span>Connectors: ${charger.connectorTypes}</span>
+      </div>
+    `);
+    chargersLayerGroup.addLayer(marker);
+  });
+}
+
+function clearChargers() {
+  if (chargersLayerGroup) {
+    chargersLayerGroup.clearLayers();
+  }
+}
+
 function displayRoute(geometry, color = "#0d6efd", weight = 5) {
   const coords = geometry.coordinates.map((c) => [c[1], c[0]]);
   const polyline = L.polyline(coords, {

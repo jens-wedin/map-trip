@@ -470,6 +470,26 @@ h1 {
     pointer-events: none;
 }
 
+/* Charger popup */
+.charger-popup {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.charger-popup strong {
+    font-size: 0.9rem;
+}
+
+/* Charger loading status */
+.charger-status {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding: 8px 0 0;
+}
+
 /* Mobile menu toggle button */
 .menu-toggle {
     display: none;
