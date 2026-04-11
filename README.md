@@ -48,6 +48,14 @@ npm run build
 npm run preview
 ```
 
+### Run E2E tests
+
+```bash
+npm run test:e2e
+```
+
+Requires Playwright (`npx playwright install chromium` on first run).
+
 ## Deployment
 
 The project auto-deploys to GitHub Pages on push to `main` via GitHub Actions.
