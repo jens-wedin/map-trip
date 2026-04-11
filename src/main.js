@@ -393,18 +393,30 @@ function createChargerIcon() {
   });
 }
 
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
 function displayChargers(chargers) {
   clearChargers();
+  const icon = createChargerIcon();
   chargers.forEach((charger) => {
     if (!charger.lat || !charger.lng) return;
+    const name = escapeHtml(charger.name);
+    const address = escapeHtml(charger.address);
+    const points = escapeHtml(String(charger.numberOfPoints));
+    const connectors = escapeHtml(charger.connectorTypes);
     const marker = L.marker([charger.lat, charger.lng], {
-      icon: createChargerIcon(),
+      icon,
+      alt: `Tesla Supercharger: ${charger.name}`,
     }).bindPopup(`
       <div class="charger-popup">
-        <strong>${charger.name}</strong>
-        <span>${charger.address}</span>
-        <span>Charging points: ${charger.numberOfPoints}</span>
-        <span>Connectors: ${charger.connectorTypes}</span>
+        <strong>${name}</strong>
+        <span>${address}</span>
+        <span>Charging points: ${points}</span>
+        <span>Connectors: ${connectors}</span>
       </div>
     `);
     chargersLayerGroup.addLayer(marker);
@@ -547,9 +559,11 @@ async function calculateRoute() {
 
     routeInfo.classList.remove("hidden");
 
-    // Store combined route geometry for charger lookup
-    const allGeometryCoords = segments.flatMap((s) => s.geometry.coordinates);
-    lastRouteGeometry = { type: "LineString", coordinates: allGeometryCoords };
+    // Store forward-only route geometry for charger lookup (skip return segments to avoid duplicate queries)
+    const forwardCoords = segments
+      .filter((s) => !s.isReturn)
+      .flatMap((s) => s.geometry.coordinates);
+    lastRouteGeometry = { type: "LineString", coordinates: forwardCoords };
 
     // Fetch Tesla chargers if electric car type selected
     if (carType === "electric") {
