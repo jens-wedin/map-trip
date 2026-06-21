@@ -20,11 +20,14 @@ let routeLayers = [];
 let markerLayers = [];
 let dragSrcIndex = null;
 let tileLayer = null;
+let chargersLayerGroup = null;
+let lastRouteGeometry = null;
 let currentTheme = localStorage.getItem("theme") || "light";
 
 function initMap() {
   map = L.map("map").setView([54.0, 10.0], 5);
   updateMapTiles();
+  chargersLayerGroup = L.layerGroup().addTo(map);
 
   renderStops();
   updateMapMarkers();
@@ -211,6 +214,10 @@ function handleDragEnd() {
 
 function updateMapMarkers() {
   clearMapOverlays();
+  clearChargers();
+  lastRouteGeometry = null;
+  const chargerStatus = document.getElementById("charger-status");
+  if (chargerStatus) chargerStatus.classList.add("hidden");
   stops.forEach((stop, i) => {
     const label = getStopLabel(i);
     const isEndpoint = i === 0 || i === stops.length - 1;
@@ -263,6 +270,165 @@ function formatDuration(seconds) {
   return `${hours}h ${minutes}m`;
 }
 
+function sampleRoutePoints(geometry, intervalKm = 50) {
+  const coords = geometry.coordinates; // [lng, lat] pairs
+  const points = [];
+  let accumulated = 0;
+
+  points.push({ lat: coords[0][1], lng: coords[0][0] });
+
+  for (let i = 1; i < coords.length; i++) {
+    const prevLat = coords[i - 1][1];
+    const prevLng = coords[i - 1][0];
+    const currLat = coords[i][1];
+    const currLng = coords[i][0];
+
+    const segmentKm = haversineKm(prevLat, prevLng, currLat, currLng);
+    accumulated += segmentKm;
+
+    if (accumulated >= intervalKm) {
+      points.push({ lat: currLat, lng: currLng });
+      accumulated = 0;
+    }
+  }
+
+  // Always include the last point
+  const last = coords[coords.length - 1];
+  const lastPoint = { lat: last[1], lng: last[0] };
+  const alreadyIncluded = points.some(
+    (p) => p.lat === lastPoint.lat && p.lng === lastPoint.lng
+  );
+  if (!alreadyIncluded) {
+    points.push(lastPoint);
+  }
+
+  return points;
+}
+
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLng / 2) *
+      Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+async function fetchTeslaChargers(lat, lng, radiusKm = 5) {
+  const url = `https://api.openchargemap.io/v3/poi?output=json&latitude=${lat}&longitude=${lng}&distance=${radiusKm}&distanceunit=KM&operatorid=23&maxresults=50&compact=true`;
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "RoadtripPlanner/1.0" },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((poi) => ({
+      id: poi.ID,
+      name: poi.AddressInfo?.Title || "Tesla Supercharger",
+      address: [
+        poi.AddressInfo?.AddressLine1,
+        poi.AddressInfo?.Town,
+        poi.AddressInfo?.Country?.Title,
+      ]
+        .filter(Boolean)
+        .join(", "),
+      lat: poi.AddressInfo?.Latitude,
+      lng: poi.AddressInfo?.Longitude,
+      numberOfPoints: poi.NumberOfPoints || "N/A",
+      connectorTypes: (poi.Connections || [])
+        .map((c) => c.ConnectionType?.Title)
+        .filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i)
+        .join(", ") || "Unknown",
+    }));
+  } catch {
+    return [];
+  }
+}
+
+async function fetchChargersAlongRoute(geometry) {
+  const points = sampleRoutePoints(geometry, 50);
+  const allChargers = await Promise.all(
+    points.map((p) => fetchTeslaChargers(p.lat, p.lng, 5))
+  );
+
+  // Deduplicate by charger ID
+  const seen = new Set();
+  const unique = [];
+  for (const chargers of allChargers) {
+    for (const charger of chargers) {
+      if (!seen.has(charger.id)) {
+        seen.add(charger.id);
+        unique.push(charger);
+      }
+    }
+  }
+  return unique;
+}
+
+function createChargerIcon() {
+  return L.divIcon({
+    className: "charger-marker",
+    html: `<div style="
+      background: #e82127;
+      color: white;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      border: 2px solid white;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    ">&#9889;</div>`,
+    iconSize: [26, 26],
+    iconAnchor: [13, 13],
+    popupAnchor: [0, -16],
+  });
+}
+
+function escapeHtml(str) {
+  const div = document.createElement("div");
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function displayChargers(chargers) {
+  clearChargers();
+  const icon = createChargerIcon();
+  chargers.forEach((charger) => {
+    if (!charger.lat || !charger.lng) return;
+    const name = escapeHtml(charger.name);
+    const address = escapeHtml(charger.address);
+    const points = escapeHtml(String(charger.numberOfPoints));
+    const connectors = escapeHtml(charger.connectorTypes);
+    const marker = L.marker([charger.lat, charger.lng], {
+      icon,
+      alt: `Tesla Supercharger: ${charger.name}`,
+    }).bindPopup(`
+      <div class="charger-popup">
+        <strong>${name}</strong>
+        <span>${address}</span>
+        <span>Charging points: ${points}</span>
+        <span>Connectors: ${connectors}</span>
+      </div>
+    `);
+    chargersLayerGroup.addLayer(marker);
+  });
+}
+
+function clearChargers() {
+  if (chargersLayerGroup) {
+    chargersLayerGroup.clearLayers();
+  }
+}
+
 function displayRoute(geometry, color = "#0d6efd", weight = 5) {
   const coords = geometry.coordinates.map((c) => [c[1], c[0]]);
   const polyline = L.polyline(coords, {
@@ -284,7 +450,10 @@ async function calculateRoute() {
   const routeInfo = document.getElementById("route-info");
   const segmentsDiv = document.getElementById("route-segments");
   const totalDiv = document.getElementById("route-total");
+  const costDiv = document.getElementById("route-cost");
   const includeReturn = document.getElementById("return-trip").checked;
+  const carType = document.getElementById("car-type").value;
+  const pricePerKm = parseFloat(document.getElementById("price-per-km").value);
 
   btn.disabled = true;
   btn.textContent = "Calculating...";
@@ -292,6 +461,7 @@ async function calculateRoute() {
 
   try {
     clearMapOverlays();
+    clearChargers();
 
     // Add markers
     stops.forEach((stop, i) => {
@@ -373,7 +543,44 @@ async function calculateRoute() {
       <span>${formatDuration(totalDuration)}</span>
     `;
 
+    // Display estimated cost if a price per km was entered
+    if (!isNaN(pricePerKm) && pricePerKm > 0) {
+      const totalKm = totalDistance / 1000;
+      const totalCost = totalKm * pricePerKm;
+      const carTypeLabel = carType.charAt(0).toUpperCase() + carType.slice(1);
+      costDiv.innerHTML = `
+        <span class="cost-label">${carTypeLabel} &mdash; Est. cost</span>
+        <span class="cost-value">$${totalCost.toFixed(2)}</span>
+      `;
+      costDiv.classList.remove("hidden");
+    } else {
+      costDiv.classList.add("hidden");
+    }
+
     routeInfo.classList.remove("hidden");
+
+    // Store forward-only route geometry for charger lookup (skip return segments to avoid duplicate queries)
+    const forwardCoords = segments
+      .filter((s) => !s.isReturn)
+      .flatMap((s) => s.geometry.coordinates);
+    lastRouteGeometry = { type: "LineString", coordinates: forwardCoords };
+
+    // Fetch Tesla chargers if electric car type selected
+    if (carType === "electric") {
+      const chargerStatus = document.getElementById("charger-status");
+      chargerStatus.textContent = "Loading Tesla chargers...";
+      chargerStatus.classList.remove("hidden");
+      try {
+        const chargers = await fetchChargersAlongRoute(lastRouteGeometry);
+        displayChargers(chargers);
+        chargerStatus.textContent = `${chargers.length} Tesla Supercharger${chargers.length !== 1 ? "s" : ""} found along route`;
+      } catch {
+        chargerStatus.textContent = "Could not load chargers";
+      }
+    } else {
+      clearChargers();
+      document.getElementById("charger-status").classList.add("hidden");
+    }
 
     const allCoords = stops.map((s) => [s.lat, s.lng]);
     map.fitBounds(allCoords, { padding: [50, 50] });
@@ -418,6 +625,25 @@ document.getElementById("new-stop-input").addEventListener("keydown", (e) => {
 document
   .getElementById("calculate-btn")
   .addEventListener("click", calculateRoute);
+
+// Toggle Tesla chargers when car type changes
+document.getElementById("car-type").addEventListener("change", async (e) => {
+  const chargerStatus = document.getElementById("charger-status");
+  if (e.target.value === "electric" && lastRouteGeometry) {
+    chargerStatus.textContent = "Loading Tesla chargers...";
+    chargerStatus.classList.remove("hidden");
+    try {
+      const chargers = await fetchChargersAlongRoute(lastRouteGeometry);
+      displayChargers(chargers);
+      chargerStatus.textContent = `${chargers.length} Tesla Supercharger${chargers.length !== 1 ? "s" : ""} found along route`;
+    } catch {
+      chargerStatus.textContent = "Could not load chargers";
+    }
+  } else {
+    clearChargers();
+    chargerStatus.classList.add("hidden");
+  }
+});
 
 // Theme toggle
 function toggleTheme() {
